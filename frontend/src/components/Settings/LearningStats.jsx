@@ -8,7 +8,9 @@ const LearningStats = ({ stats, onRefresh }) => {
 
   const formatConfidenceDistribution = (dist) => {
     const total = Object.values(dist).reduce((sum, val) => sum + val, 0);
-    if (total === 0) return dist;
+    
+    // If there are no entries, return an empty array instead of the original object.
+    if (total === 0) return []; 
     
     return Object.entries(dist).map(([level, count]) => ({
       level,
