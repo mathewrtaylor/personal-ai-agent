@@ -1,0 +1,129 @@
+/* frontend/src/components/Chat/ChatMessage.css */
+.chat-message {
+  display: flex;
+  margin-bottom: 1rem;
+  animation: fadeIn 0.3s ease-in;
+}
+
+.chat-message.user {
+  justify-content: flex-end;
+}
+
+.chat-message.assistant {
+  justify-content: flex-start;
+}
+
+.chat-message.error {
+  justify-content: center;
+}
+
+.message-content {
+  max-width: 70%;
+  padding: 0.75rem 1rem;
+  border-radius: 18px;
+  position: relative;
+}
+
+.chat-message.user .message-content {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border-bottom-right-radius: 4px;
+}
+
+.chat-message.assistant .message-content {
+  background: #f8f9fa;
+  color: #333;
+  border-bottom-left-radius: 4px;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.chat-message.error .message-content {
+  background: #f8d7da;
+  color: #721c24;
+  border: 1px solid #f5c6cb;
+}
+
+.message-text {
+  line-height: 1.5;
+  word-wrap: break-word;
+  white-space: pre-wrap;
+}
+
+.message-info {
+  margin-top: 0.5rem;
+  font-size: 0.7rem;
+  opacity: 0.7;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.message-model {
+  font-family: 'Courier New', monospace;
+  background: rgba(0, 0, 0, 0.1);
+  padding: 0.1rem 0.3rem;
+  border-radius: 3px;
+}
+
+.feedback-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0.2rem;
+  border-radius: 4px;
+  transition: background-color 0.2s ease;
+}
+
+.feedback-btn:hover {
+  background: rgba(0, 0, 0, 0.1);
+}
+
+.feedback-panel {
+  margin-top: 0.5rem;
+  padding: 0.5rem;
+  background: rgba(255, 255, 255, 0.9);
+  border-radius: 8px;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.8rem;
+}
+
+.feedback-buttons {
+  display: flex;
+  gap: 0.3rem;
+}
+
+.feedback-buttons .feedback-btn {
+  padding: 0.2rem 0.5rem;
+  font-size: 0.7rem;
+  border-radius: 4px;
+}
+
+.feedback-btn.helpful:hover {
+  background: #d4edda;
+}
+
+.feedback-btn.not-helpful:hover {
+  background: #f8d7da;
+}
+
+.feedback-submitted {
+  margin-top: 0.5rem;
+  font-size: 0.7rem;
+  color: #28a745;
+  font-weight: 500;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

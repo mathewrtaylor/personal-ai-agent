@@ -1,0 +1,136 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: aiagent-postgres
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-aiagent}
+      POSTGRES_USER: ${POSTGRES_USER:-aiagent}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-aiagent123}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-aiagent}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - aiagent-network
+
+  # Ollama for local AI models
+  ollama:
+    image: ollama/ollama:latest
+    container_name: aiagent-ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    environment:
+      - OLLAMA_KEEP_ALIVE=24h
+    networks:
+      - aiagent-network
+    # For GPU support, uncomment the following:
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: 1
+    #           capabilities: [gpu]
+
+  # Backend API
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: aiagent-backend
+    environment:
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-aiagent}:${POSTGRES_PASSWORD:-aiagent123}@postgres:5432/${POSTGRES_DB:-aiagent}
+      - OLLAMA_HOST=http://ollama:11434
+      - OLLAMA_MODEL=${OLLAMA_MODEL:-llama3.2:latest}
+      - MODEL_PROVIDER=${MODEL_PROVIDER:-ollama}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+      - SECRET_KEY=${SECRET_KEY:-your-secret-key-change-this}
+      - ENABLE_LEARNING=${ENABLE_LEARNING:-true}
+      - MAX_CONVERSATION_HISTORY=${MAX_CONVERSATION_HISTORY:-1000}
+      - LEARNING_UPDATE_INTERVAL=${LEARNING_UPDATE_INTERVAL:-10}
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      ollama:
+        condition: service_started
+    volumes:
+      - ./backend:/app
+    networks:
+      - aiagent-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Frontend React App
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: aiagent-frontend
+    ports:
+      - "3000:3000"
+    environment:
+      - REACT_APP_API_URL=http://localhost:8000
+    depends_on:
+      - backend
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    networks:
+      - aiagent-network
+
+  # Nginx Reverse Proxy (optional, for production)
+  nginx:
+    image: nginx:alpine
+    container_name: aiagent-nginx
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - frontend
+      - backend
+    networks:
+      - aiagent-network
+    profiles:
+      - production
+
+  # Vector Database for semantic search (optional)
+  chroma:
+    image: ghcr.io/chroma-core/chroma:latest
+    container_name: aiagent-chroma
+    ports:
+      - "8001:8000"
+    volumes:
+      - chroma_data:/chroma/chroma
+    environment:
+      - CHROMA_DB_IMPL=clickhouse
+    networks:
+      - aiagent-network
+    profiles:
+      - advanced
+
+volumes:
+  postgres_data:
+  ollama_data:
+  chroma_data:
+
+networks:
+  aiagent-network:
+    driver: bridge
