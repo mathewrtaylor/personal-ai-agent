@@ -28,13 +28,31 @@
   font-style: italic;
 }
 
-@keyframes typing {
-  0%, 80%, 100% {
-    transform: scale(0.8);
-    opacity: 0.5;
+.message-textarea.warming {
+  border-color: #ffc107 !important;
+  background: linear-gradient(45deg, rgba(255, 193, 7, 0.1) 0%, rgba(255, 255, 255, 0.1) 50%, rgba(255, 193, 7, 0.1) 100%);
+  background-size: 200% 200%;
+  animation: warmupShimmer 2s linear infinite;
+}
+
+.warming-indicator {
+  animation: warmupPulse 1s ease-in-out infinite alternate;
+}
+
+@keyframes warmupShimmer {
+  0% {
+    background-position: -200% 0;
   }
-  40% {
-    transform: scale(1);
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+@keyframes warmupPulse {
+  from {
+    opacity: 0.6;
+  }
+  to {
     opacity: 1;
   }
 }

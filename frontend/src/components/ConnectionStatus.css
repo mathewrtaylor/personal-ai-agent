@@ -1,0 +1,155 @@
+/* frontend/src/components/ConnectionStatus.css */
+.connection-status {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  transition: all 0.3s ease;
+  border: 1px solid transparent;
+}
+
+.connection-status.connected {
+  background: rgba(40, 167, 69, 0.1);
+  border-color: rgba(40, 167, 69, 0.3);
+}
+
+.connection-status.disconnected {
+  background: rgba(220, 53, 69, 0.1);
+  border-color: rgba(220, 53, 69, 0.3);
+}
+
+.connection-status.reconnecting {
+  background: rgba(255, 193, 7, 0.1);
+  border-color: rgba(255, 193, 7, 0.3);
+}
+
+.status-indicator {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.status-icon {
+  font-size: 1rem;
+  animation: none;
+}
+
+.connection-status.reconnecting .status-icon {
+  animation: spin 2s linear infinite;
+}
+
+.status-text {
+  font-weight: 500;
+  color: #333;
+}
+
+.reconnect-btn {
+  padding: 0.3rem 0.8rem;
+  background: #667eea;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.reconnect-btn:hover {
+  background: #5a6fd8;
+  transform: translateY(-1px);
+}
+
+.reconnect-btn:active {
+  transform: translateY(0);
+}
+
+.connection-error {
+  font-size: 0.75rem;
+  color: #dc3545;
+  background: rgba(220, 53, 69, 0.1);
+  padding: 0.2rem 0.5rem;
+  border-radius: 4px;
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.last-connected {
+  font-size: 0.75rem;
+  color: #666;
+  font-style: italic;
+}
+
+/* Disconnected banner for critical failures */
+.disconnected-banner {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  background: #dc3545;
+  color: white;
+  text-align: center;
+  padding: 0.75rem;
+  font-weight: 500;
+  z-index: 1001;
+  animation: slideDown 0.3s ease-out;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+}
+
+.disconnected-banner .reconnect-banner-btn {
+  background: rgba(255, 255, 255, 0.2);
+  color: white;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  padding: 0.3rem 0.8rem;
+  border-radius: 4px;
+  margin-left: 1rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.disconnected-banner .reconnect-banner-btn:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes slideDown {
+  from {
+    transform: translateY(-100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+/* Mobile responsiveness */
+@media (max-width: 768px) {
+  .connection-status {
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+  
+  .connection-error,
+  .last-connected {
+    width: 100%;
+    text-align: center;
+  }
+  
+  .reconnect-btn {
+    font-size: 0.75rem;
+    padding: 0.25rem 0.6rem;
+  }
+}

@@ -2,7 +2,8 @@
 import React, { useState, useEffect } from 'react';
 import ChatContainer from './components/Chat/ChatContainer';
 import Settings from './components/Settings/Settings';
-import { useOnlineStatus } from './hooks/useOnlineStatus';
+import ConnectionStatus from './components/ConnectionStatus';
+import { useConnectionManager } from './hooks/useConnectionManager';
 import { chatAPI, learningAPI } from './services/api';
 import './App.css';
 
@@ -10,11 +11,22 @@ function App() {
   const [showSettings, setShowSettings] = useState(false);
   const [stats, setStats] = useState(null);
   const [profile, setProfile] = useState(null);
-  const { isOnline, networkOnline, apiOnline } = useOnlineStatus();
+  
+  // Use the connection manager
+  const {
+    isConnected,
+    isReconnecting,
+    lastConnected,
+    connectionError,
+    reconnect,
+    checkConnection
+  } = useConnectionManager();
 
   useEffect(() => {
-    loadInitialData();
-  }, []);
+    if (isConnected) {
+      loadInitialData();
+    }
+  }, [isConnected]);
 
   const loadInitialData = async () => {
     try {
@@ -30,31 +42,41 @@ function App() {
   };
 
   const handleStatsUpdate = () => {
-    loadInitialData();
+    if (isConnected) {
+      loadInitialData();
+    }
   };
-
-  const getConnectionStatus = () => {
-    if (!networkOnline) return { status: 'offline', message: 'No internet connection' };
-    if (!apiOnline) return { status: 'disconnected', message: 'AI Agent offline' };
-    return { status: 'connected', message: 'Connected to AI Agent' };
-  };
-
-  const connectionStatus = getConnectionStatus();
 
   return (
     <div className="app">
+      {!isConnected && (
+        <div className="disconnected-banner">
+          AI Agent disconnected - some features may not work properly
+          <button 
+            className="reconnect-banner-btn" 
+            onClick={reconnect}
+            disabled={isReconnecting}
+          >
+            {isReconnecting ? 'Reconnecting...' : 'Reconnect Now'}
+          </button>
+        </div>
+      )}
+
       <header className="app-header">
         <div className="header-left">
           <h1>Personal AI Agent</h1>
-          <div className={`connection-status ${connectionStatus.status}`}>
-            <div className="status-indicator"></div>
-            {connectionStatus.message}
-          </div>
+          <ConnectionStatus
+            isConnected={isConnected}
+            isReconnecting={isReconnecting}
+            lastConnected={lastConnected}
+            connectionError={connectionError}
+            onReconnect={reconnect}
+          />
         </div>
         
         <div className="header-right">
           <div className="stats-summary">
-            {stats && (
+            {stats && isConnected && (
               <>
                 <span className="stat-item">
                   💬 {stats.total_messages || 0} messages
@@ -71,7 +93,8 @@ function App() {
           <button 
             onClick={() => setShowSettings(true)} 
             className="settings-btn"
-            title="Settings & Profile"
+            disabled={!isConnected}
+            title={!isConnected ? "Connect to AI agent to access settings" : "Settings & Profile"}
           >
             ⚙️ Settings
           </button>
@@ -80,18 +103,16 @@ function App() {
 
       <main className="main-content">
         <div className="chat-wrapper">
-          <ChatContainer onStatsUpdate={handleStatsUpdate} />
+          <ChatContainer 
+            onStatsUpdate={handleStatsUpdate}
+            isConnected={isConnected}
+            onConnectionRequest={checkConnection}
+          />
         </div>
       </main>
 
       {showSettings && (
         <Settings onClose={() => setShowSettings(false)} />
-      )}
-      
-      {!isOnline && (
-        <div className="offline-banner">
-          <span>⚠️ You're currently offline. Some features may not work properly.</span>
-        </div>
       )}
     </div>
   );

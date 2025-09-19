@@ -6,11 +6,13 @@ import TypingIndicator from './TypingIndicator';
 import { chatAPI } from '../../services/api';
 import './ChatContainer.css';
 
-const ChatContainer = ({ onStatsUpdate }) => {
+const ChatContainer = ({ onStatsUpdate, isConnected, onConnectionRequest }) => {
   const [messages, setMessages] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [isConnected, setIsConnected] = useState(true);
+  const [loadingStartTime, setLoadingStartTime] = useState(null);
+  const [loadingDuration, setLoadingDuration] = useState(0);
   const messagesEndRef = useRef(null);
+  const loadingTimerRef = useRef(null);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -24,6 +26,30 @@ const ChatContainer = ({ onStatsUpdate }) => {
     loadConversationHistory();
   }, []);
 
+  // Update loading duration timer
+  useEffect(() => {
+    if (isLoading) {
+      const startTime = Date.now();
+      setLoadingStartTime(startTime);
+      
+      loadingTimerRef.current = setInterval(() => {
+        setLoadingDuration(Date.now() - startTime);
+      }, 1000); // Update every second
+      
+    } else {
+      if (loadingTimerRef.current) {
+        clearInterval(loadingTimerRef.current);
+      }
+      setLoadingDuration(0);
+    }
+
+    return () => {
+      if (loadingTimerRef.current) {
+        clearInterval(loadingTimerRef.current);
+      }
+    };
+  }, [isLoading]);
+
   const loadConversationHistory = async () => {
     try {
       const history = await chatAPI.getHistory();
@@ -36,11 +62,15 @@ const ChatContainer = ({ onStatsUpdate }) => {
       setMessages(formattedHistory);
     } catch (error) {
       console.error('Failed to load conversation history:', error);
-      setIsConnected(false);
     }
   };
 
   const sendMessage = async (content) => {
+    if (!isConnected) {
+      onConnectionRequest();
+      return;
+    }
+
     const userMessage = {
       id: Date.now() + '_user',
       type: 'user',
@@ -52,43 +82,75 @@ const ChatContainer = ({ onStatsUpdate }) => {
     setIsLoading(true);
 
     try {
-      const response = await chatAPI.sendMessage(content);
+      // Create AbortController for timeout management
+      const controller = new AbortController();
+      
+      // Set a very long timeout (5 minutes) with user feedback
+      const timeoutId = setTimeout(() => {
+        controller.abort();
+      }, 5 * 60 * 1000); // 5 minutes
+
+      const response = await fetch('http://localhost:8000/api/chat/message', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          content: content,
+          user_id: 'default_user'
+        }),
+        signal: controller.signal
+      });
+
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
       
       const aiMessage = {
-        id: response.message_id,
+        id: data.message_id,
         type: 'assistant',
-        content: response.response,
-        timestamp: new Date(response.timestamp),
-        model: response.model,
-        provider: response.provider,
+        content: data.response,
+        timestamp: new Date(data.timestamp),
+        model: data.model,
+        provider: data.provider,
       };
 
       setMessages(prev => [...prev, aiMessage]);
-      setIsConnected(true);
       
-      // Update stats
       if (onStatsUpdate) {
         onStatsUpdate();
       }
       
     } catch (error) {
       console.error('Failed to send message:', error);
-      setIsConnected(false);
       
-      const errorMessage = {
+      let errorMessage = 'Sorry, I encountered an error. Please try again.';
+      
+      if (error.name === 'AbortError') {
+        errorMessage = 'The AI took too long to respond (over 5 minutes). This might be due to a complex question or high server load. Please try a simpler question or try again later.';
+      } else if (error.message.includes('Failed to fetch') || error.message.includes('ERR_NETWORK')) {
+        errorMessage = 'Connection lost. Click the reconnect button to try again.';
+      } else if (error.message.includes('500')) {
+        errorMessage = 'The AI service is having issues. Please wait a moment and try again.';
+      }
+      
+      const errorMsg = {
         id: Date.now() + '_error',
         type: 'error',
-        content: 'Sorry, I encountered an error. Please try again.',
+        content: errorMessage,
         timestamp: new Date(),
       };
-      setMessages(prev => [...prev, errorMessage]);
+      setMessages(prev => [...prev, errorMsg]);
     } finally {
       setIsLoading(false);
     }
   };
 
   const handleFeedback = (messageId, helpful) => {
-    // Optionally update UI to show feedback was recorded
     console.log(`Feedback for ${messageId}: ${helpful ? 'helpful' : 'not helpful'}`);
   };
 
@@ -109,11 +171,24 @@ const ChatContainer = ({ onStatsUpdate }) => {
   return (
     <div className="chat-container">
       <div className="chat-header">
-        <div className="connection-status">
-          <div className={`status-indicator ${isConnected ? 'connected' : 'disconnected'}`}></div>
-          {isConnected ? 'Connected' : 'Disconnected'}
+        <div className="chat-status">
+          {isLoading && (
+            <div className="processing-status">
+              AI is processing your message...
+              {loadingDuration > 10000 && (
+                <span className="processing-time">
+                  ({Math.floor(loadingDuration / 1000)}s)
+                </span>
+              )}
+            </div>
+          )}
         </div>
-        <button onClick={clearHistory} className="clear-btn" disabled={isLoading}>
+        <button 
+          onClick={clearHistory} 
+          className="clear-btn" 
+          disabled={isLoading}
+          title="Clear conversation history"
+        >
           Clear History
         </button>
       </div>
@@ -124,6 +199,11 @@ const ChatContainer = ({ onStatsUpdate }) => {
             <h2>Welcome to your Personal AI Agent!</h2>
             <p>I'm here to learn from you and adapt to your communication style.</p>
             <p>Start a conversation and I'll gradually learn your preferences.</p>
+            {!isConnected && (
+              <div className="connection-warning">
+                <p>⚠️ Not connected to AI service. Please check your connection.</p>
+              </div>
+            )}
           </div>
         ) : (
           messages.map((message) => (
@@ -135,7 +215,9 @@ const ChatContainer = ({ onStatsUpdate }) => {
           ))
         )}
         
-        {isLoading && <TypingIndicator />}
+        {isLoading && (
+          <TypingIndicator duration={loadingDuration} />
+        )}
         
         <div ref={messagesEndRef} />
       </div>

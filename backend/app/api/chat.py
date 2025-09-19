@@ -33,6 +33,34 @@ class ConversationHistory(BaseModel):
     timestamp: datetime
     metadata: dict = {}
 
+@router.post("/warmup")
+async def warmup_model(request: Request):
+    """Warm up the AI model to reduce response time for next request"""
+    try:
+        # Get AI service from app state
+        ai_service = request.app.state.ai_service
+        
+        if not ai_service.initialized:
+            return {"status": "not_ready", "message": "AI service not initialized"}
+        
+        # Send minimal request to warm up the model
+        warmup_response = await ai_service.generate_response(
+            ".", # Minimal prompt
+            [],  # No history
+            None, # No profile
+            "You are a helpful assistant. Respond with just 'ok'." # Simple system prompt
+        )
+        
+        return {
+            "status": "warmed",
+            "message": "Model warmed up successfully",
+            "time_taken": warmup_response.get("metadata", {}).get("total_duration", "unknown")
+        }
+        
+    except Exception as e:
+        logger.warning(f"Warmup failed but continuing: {e}")
+        return {"status": "failed", "message": str(e)}
+
 @router.post("/message", response_model=ChatResponse)
 async def send_message(
     message: ChatMessage,

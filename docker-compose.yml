@@ -31,10 +31,19 @@ services:
     volumes:
       - ollama_data:/root/.ollama
     environment:
-      - OLLAMA_KEEP_ALIVE=24h
+      - OLLAMA_KEEP_ALIVE=30m  # Keep model loaded for 30 minutes instead of default 5m
+      - OLLAMA_NUM_PARALLEL=4  # Allow up to 4 parallel requests
+      - OLLAMA_MAX_LOADED_MODELS=1  # Only keep one model in memory
+      - OLLAMA_FLASH_ATTENTION=true  # Enable optimized attention (if supported)
     networks:
       - aiagent-network
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:11434/api/tags"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
 
   # Backend API
   backend:
