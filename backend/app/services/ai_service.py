@@ -37,7 +37,7 @@ class AIService:
     
     async def _initialize_ollama(self):
         """Initialize Ollama connection and ensure model is available"""
-        self.client = httpx.AsyncClient(timeout=60.0)
+        self.client = httpx.AsyncClient(timeout=360.0)
         
         # Check if Ollama is running
         try:
